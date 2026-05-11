@@ -69,6 +69,24 @@
     color: var(--text-sub);
     margin-top: 2px;
   }
+  .btn-copy {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--white);
+    color: var(--pink-500);
+    font-family: 'Sarabun', sans-serif;
+    font-size: 0.88rem;
+    font-weight: 500;
+    padding: 9px 18px;
+    border-radius: 999px;
+    border: 1.5px solid var(--pink-300);
+    cursor: pointer;
+    transition: all 0.18s;
+  }
+  .btn-copy:hover { background: var(--pink-50); }
+  .btn-copy.copied { background: #e4f5e6; color: #3a9e4a; border-color: #a8ddb0; }
+
   .btn-add {
     display: inline-flex;
     align-items: center;
@@ -412,10 +430,15 @@
     <div class="site-logo"><span class="blossom">🌸</span> Daily Work Tracker</div>
     <div class="header-date" id="today-date"></div>
   </div>
-  <button class="btn-add" onclick="openModal()">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-    เพิ่มงาน
-  </button>
+  <div style="display:flex;gap:10px;align-items:center;">
+    <button class="btn-copy" id="btn-copy" onclick="copyToday()">
+      📋 Copy สรุปวันนี้
+    </button>
+    <button class="btn-add" onclick="openModal()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      เพิ่มงาน
+    </button>
+  </div>
 </header>
 
 <!-- MAIN -->
@@ -683,6 +706,58 @@
     tasks = tasks.filter(t => t.id !== id);
     saveTasks();
     render();
+  }
+
+  // ─── COPY TODAY ─────────────────────────────────
+  function copyToday() {
+    const today = todayISO();
+    const todayTasks = tasks.filter(t => t.date === today);
+
+    if (todayTasks.length === 0) {
+      alert('ยังไม่มีงานวันนี้เลย 🌸');
+      return;
+    }
+
+    const dateStr = new Date().toLocaleDateString('th-TH', { day:'2-digit', month:'2-digit', year:'numeric' });
+
+    let lines = [];
+    lines.push(`📅 ${dateStr}`);
+    lines.push('');
+
+    todayTasks.forEach((t, i) => {
+      const statusEmoji = { 'Not Start':'⭕','On Process':'🔵','Success':'✅','Blocked':'🚫','Review':'👀' };
+      let line = `${i + 1}. ${t.name}`;
+      if (t.assignee) line += ` (${t.assignee})`;
+      lines.push(line);
+      if (t.status) lines.push(`   ${statusEmoji[t.status] || ''} ${t.status}${t.priority ? ' | ' + t.priority : ''}`);
+      if (t.deadline) {
+        const d = daysUntil(t.deadline);
+        const dlText = d < 0 ? `เลยกำหนด ${Math.abs(d)} วัน` : d === 0 ? 'วันนี้!' : `เหลือ ${d} วัน`;
+        lines.push(`   📅 Deadline: ${isoToThai(t.deadline)} · ${dlText}`);
+      }
+      if (t.progress) lines.push(`   📊 ${t.progress}%`);
+      if (t.desc) {
+        t.desc.split('\n').forEach(dl => { if (dl.trim()) lines.push(`   - ${dl.trim()}`); });
+      }
+      if (i < todayTasks.length - 1) lines.push('');
+    });
+
+    const text = lines.join('\n');
+    navigator.clipboard.writeText(text).then(() => {
+      const btn = document.getElementById('btn-copy');
+      btn.textContent = '✅ Copied!';
+      btn.classList.add('copied');
+      setTimeout(() => {
+        btn.textContent = '📋 Copy สรุปวันนี้';
+        btn.classList.remove('copied');
+      }, 2000);
+    }).catch(() => {
+      const ta = document.createElement('textarea');
+      ta.value = text; document.body.appendChild(ta);
+      ta.select(); document.execCommand('copy');
+      document.body.removeChild(ta);
+      alert('Copy แล้ว! 🌸 วางใน Line ได้เลย');
+    });
   }
 
   // keyboard: ESC closes modal
