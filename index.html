@@ -722,20 +722,11 @@
 
     let lines = [];
     lines.push(`📅 ${dateStr}`);
+    lines.push('นิว - Dashboard');
     lines.push('');
 
     todayTasks.forEach((t, i) => {
-      const statusEmoji = { 'Not Start':'⭕','On Process':'🔵','Success':'✅','Blocked':'🚫','Review':'👀' };
-      let line = `${i + 1}. ${t.name}`;
-      if (t.assignee) line += ` (${t.assignee})`;
-      lines.push(line);
-      if (t.status) lines.push(`   ${statusEmoji[t.status] || ''} ${t.status}${t.priority ? ' | ' + t.priority : ''}`);
-      if (t.deadline) {
-        const d = daysUntil(t.deadline);
-        const dlText = d < 0 ? `เลยกำหนด ${Math.abs(d)} วัน` : d === 0 ? 'วันนี้!' : `เหลือ ${d} วัน`;
-        lines.push(`   📅 Deadline: ${isoToThai(t.deadline)} · ${dlText}`);
-      }
-      if (t.progress) lines.push(`   📊 ${t.progress}%`);
+      lines.push(`${i + 1}. ${t.name} ( ${t.status} )`);
       if (t.desc) {
         t.desc.split('\n').forEach(dl => { if (dl.trim()) lines.push(`   - ${dl.trim()}`); });
       }
