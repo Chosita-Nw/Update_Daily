@@ -223,6 +223,19 @@
     white-space: pre-line;
   }
 
+  .task-remaining {
+    font-size: 0.85rem;
+    color: #3a7dd4;
+    background: #eef5fd;
+    border: 1px solid #d5e6fa;
+    border-radius: var(--radius-sm);
+    padding: 8px 12px;
+    margin-bottom: 10px;
+    line-height: 1.55;
+    white-space: pre-line;
+  }
+  .task-remaining b { font-weight: 600; }
+
   .task-meta {
     display: flex;
     align-items: center;
@@ -316,6 +329,8 @@
     border: 1.5px solid var(--pink-100);
     box-shadow: 0 8px 48px rgba(220,100,140,0.18);
     animation: popIn 0.2s ease;
+    max-height: 90vh;
+    overflow-y: auto;
   }
   @keyframes popIn {
     from { opacity: 0; transform: scale(0.96) translateY(8px); }
@@ -334,6 +349,7 @@
   }
 
   .form-group { margin-bottom: 12px; }
+  .form-group.hidden { display: none; }
   .form-label {
     display: block;
     font-size: 0.78rem;
@@ -363,6 +379,7 @@
     background: var(--white);
   }
   .form-group textarea { min-height: 80px; resize: vertical; }
+  #remaining-group textarea { min-height: 60px; border-color: #bcd8f7; background: #f3f9ff; }
 
   .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 
@@ -501,7 +518,7 @@
     <div class="form-row">
       <div class="form-group">
         <label class="form-label">Status</label>
-        <select id="f-status">
+        <select id="f-status" onchange="toggleRemainingField()">
           <option value="Not Start">Not Start</option>
           <option value="On Process">On Process</option>
           <option value="Review">Review</option>
@@ -517,6 +534,12 @@
           <option value="Low">Low</option>
         </select>
       </div>
+    </div>
+
+    <!-- แสดงเฉพาะตอน status = On Process -->
+    <div class="form-group hidden" id="remaining-group">
+      <label class="form-label">🔵 เหลือทำอะไรอีกบ้าง</label>
+      <textarea id="f-remaining" placeholder="สิ่งที่ยังไม่เสร็จ, ขั้นตอนถัดไป..."></textarea>
     </div>
 
     <div class="form-row">
@@ -621,6 +644,7 @@
             </div>
           </div>
           ${t.desc ? `<div class="task-desc">${escHtml(t.desc)}</div>` : ''}
+          ${t.status === 'On Process' && t.remaining ? `<div class="task-remaining"><b>เหลือทำ:</b> ${escHtml(t.remaining)}</div>` : ''}
           <div class="task-meta">
             <span class="badge ${STATUS_BADGE[t.status] || 'badge-not-start'}">${STATUS_EMOJI[t.status] || ''} ${t.status}</span>
             ${t.priority ? `<span class="meta-chip"><span class="priority-dot ${PRIORITY_CLS[t.priority]}"></span>${t.priority}</span>` : ''}
@@ -652,24 +676,34 @@
     render();
   }
 
+  // ─── REMAINING FIELD TOGGLE ─────────────────────
+  function toggleRemainingField() {
+    const status = document.getElementById('f-status').value;
+    const group = document.getElementById('remaining-group');
+    if (status === 'On Process') group.classList.remove('hidden');
+    else group.classList.add('hidden');
+  }
+
   // ─── MODAL ──────────────────────────────────────
   function openModal(id) {
     document.getElementById('modal-title-txt').textContent = id ? 'แก้ไขงาน' : 'เพิ่มงานใหม่';
     document.getElementById('edit-id').value = id || '';
     if (id) {
       const t = tasks.find(x => x.id === id);
-      document.getElementById('f-name').value     = t.name || '';
-      document.getElementById('f-desc').value     = t.desc || '';
-      document.getElementById('f-status').value   = t.status || 'Not Start';
-      document.getElementById('f-priority').value = t.priority || 'Mid';
-      document.getElementById('f-deadline').value = t.deadline || '';
-      document.getElementById('f-progress').value = t.progress || '';
-      document.getElementById('f-assignee').value = t.assignee || '';
+      document.getElementById('f-name').value      = t.name || '';
+      document.getElementById('f-desc').value      = t.desc || '';
+      document.getElementById('f-status').value    = t.status || 'Not Start';
+      document.getElementById('f-priority').value  = t.priority || 'Mid';
+      document.getElementById('f-deadline').value  = t.deadline || '';
+      document.getElementById('f-progress').value  = t.progress || '';
+      document.getElementById('f-assignee').value  = t.assignee || '';
+      document.getElementById('f-remaining').value = t.remaining || '';
     } else {
-      ['f-name','f-desc','f-deadline','f-progress','f-assignee'].forEach(id => document.getElementById(id).value = '');
+      ['f-name','f-desc','f-deadline','f-progress','f-assignee','f-remaining'].forEach(id => document.getElementById(id).value = '');
       document.getElementById('f-status').value   = 'Not Start';
       document.getElementById('f-priority').value = 'Mid';
     }
+    toggleRemainingField();
     document.getElementById('overlay').classList.add('open');
     setTimeout(() => document.getElementById('f-name').focus(), 80);
   }
@@ -681,15 +715,17 @@
     const name = document.getElementById('f-name').value.trim();
     if (!name) { document.getElementById('f-name').focus(); return; }
     const id = document.getElementById('edit-id').value;
+    const status = document.getElementById('f-status').value;
     const task = {
       id: id || genId(),
       name,
-      desc:     document.getElementById('f-desc').value.trim(),
-      status:   document.getElementById('f-status').value,
-      priority: document.getElementById('f-priority').value,
-      deadline: document.getElementById('f-deadline').value,
-      progress: document.getElementById('f-progress').value,
-      assignee: document.getElementById('f-assignee').value.trim(),
+      desc:      document.getElementById('f-desc').value.trim(),
+      status,
+      priority:  document.getElementById('f-priority').value,
+      deadline:  document.getElementById('f-deadline').value,
+      progress:  document.getElementById('f-progress').value,
+      assignee:  document.getElementById('f-assignee').value.trim(),
+      remaining: status === 'On Process' ? document.getElementById('f-remaining').value.trim() : '',
       date: id ? (tasks.find(x=>x.id===id)?.date || todayISO()) : todayISO(),
     };
     if (id) { const i = tasks.findIndex(x=>x.id===id); tasks[i] = task; }
@@ -729,6 +765,9 @@
       lines.push(`${i + 1}. ${t.name} ( ${t.status} )`);
       if (t.desc) {
         t.desc.split('\n').forEach(dl => { if (dl.trim()) lines.push(`   - ${dl.trim()}`); });
+      }
+      if (t.status === 'On Process' && t.remaining) {
+        lines.push(`   เหลือทำ: ${t.remaining.split('\n').map(l=>l.trim()).filter(Boolean).join(', ')}`);
       }
       if (i < todayTasks.length - 1) lines.push('');
     });
